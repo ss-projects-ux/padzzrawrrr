@@ -1,0 +1,14 @@
+{
+  "name": "padzzrawrrr",
+  "version": "1.0.0",
+  "description": "Bot overthinking 🤪💔",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.7",
+    "pino": "^8.14.1"
+  }
+}

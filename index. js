@@ -1,0 +1,57 @@
+import makeWASocket, { useMultiFileAuthState, fetchLatestBaileysVersion } from "@whiskeysockets/baileys"
+import pino from "pino"
+import fs from "fs"
+import path from "path"
+import { fileURLToPath } from "url"
+import { dirname } from "path"
+import { exec } from "child_process"
+import config from "./config.json" assert { type: "json" }
+
+// untuk __dirname di ES module
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// Load semua plugin
+const pluginsDir = path.join(__dirname, "plugins")
+const plugins = {}
+fs.readdirSync(pluginsDir).forEach(file => {
+    if (file.endsWith(".js")) {
+        const name = file.replace(".js", "")
+        plugins[name] = import(`./plugins/${file}`)
+    }
+})
+
+async function startBot() {
+    const { state, saveCreds } = await useMultiFileAuthState("session")
+    const { version } = await fetchLatestBaileysVersion()
+
+    const sock = makeWASocket({
+        version,
+        logger: pino({ level: "silent" }),
+        printQRInTerminal: true,
+        auth: state,
+    })
+
+    sock.ev.on("creds.update", saveCreds)
+
+    sock.ev.on("messages.upsert", async ({ messages }) => {
+        const m = messages[0]
+        if (!m.message) return
+        const text = m.message.conversation || m.message.extendedTextMessage?.text
+        if (!text) return
+
+        // prefix
+        if (!text.startsWith(config.prefix)) return
+        const args = text.slice(config.prefix.length).trim().split(/ +/)
+        const cmd = args.shift().toLowerCase()
+
+        if (plugins[cmd]) {
+            const plugin = await plugins[cmd]
+            plugin.default(sock, m, args, config)
+        } else {
+            await sock.sendMessage(m.key.remoteJid, { text: `❌ Command *${cmd}* tidak ditemukan!` })
+        }
+    })
+}
+
+startBot()

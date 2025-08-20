@@ -1,2 +1,2 @@
-# lugapapa pad? 
+# testi 
 wong lio ngerti opo? 
